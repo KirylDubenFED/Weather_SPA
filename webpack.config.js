@@ -36,17 +36,18 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const ESLintPlugin = require('eslint-webpack-plugin');
 
-// const isDev = process.env.NODE_ENV === 'development';
-// const isProd = !isDev;
-//
-// const buildFileName = (ext) => isDev ? `[name].${ext}` : `[name].[contenthash].${ext}`;
+const isDev = process.env.NODE_ENV === 'development';
+const isProd = !isDev;
+
+const buildFileName = (ext) => isDev ? `[name]${ext}` : `[name].[contenthash]${ext}`;
 
 module.exports = {
   mode: 'development',
   devtool: 'inline-source-map',
   output: {
-    filename: 'bundle[contenthash].js',
+    filename: buildFileName('.js'),
     path: path.resolve(__dirname, 'dist'),
     publicPath: '',
   },
@@ -61,12 +62,17 @@ module.exports = {
   plugins: [
     new webpack.ProgressPlugin(),
     new MiniCssExtractPlugin({
-      filename: 'styles/main[hash].css',
+      filename: `styles/${buildFileName('.css')}`,
     }),
     new CleanWebpackPlugin(),
     new HtmlWebpackPlugin({
       title: 'Webpack Project',
       template: './src/index.html',
+      minify: isProd,
+    }),
+    new ESLintPlugin({
+      fix: true,
+      lintDirtyModulesOnly: true,
     }),
   ],
 
@@ -89,23 +95,21 @@ module.exports = {
             loader: MiniCssExtractPlugin.loader,
 
             options: {
-              publicPath: (resourcePath, context) => (
-                path.relative(path.dirname(resourcePath), context) + '/'
-              )
+              publicPath: '../',
             },
           },
           {
             loader: 'css-loader',
 
             options: {
-              sourceMap: true,
+              sourceMap: isDev,
             },
           },
           {
             loader: 'sass-loader',
 
             options: {
-              sourceMap: true,
+              sourceMap: isDev,
             },
           },
         ],
@@ -114,14 +118,14 @@ module.exports = {
         test: /\.(png|svg|jpg|jpeg|gif)$/i,
         type: 'asset/resource',
         generator: {
-          filename: 'static/images/[name][ext]'
+          filename: `static/images/${buildFileName('[ext]')}`
         }
       },
       {
         test: /\.(woff|woff2|eot|ttf|otf)$/i,
         type: 'asset/resource',
         generator: {
-          filename: 'static/fonts/[name][ext]'
+          filename: `static/fonts/${buildFileName('[ext]')}`
         }
       },
     ],
