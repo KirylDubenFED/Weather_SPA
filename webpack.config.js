@@ -1,9 +1,6 @@
 const path = require('path');
 const webpack = require('webpack');
 
-
-
-
 /*
  * SplitChunksPlugin is enabled by default and replaced
  * deprecated CommonsChunkPlugin. It automatically identifies modules which
@@ -28,9 +25,6 @@ const webpack = require('webpack');
 
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
-
-
-
 /*
  * We've enabled TerserPlugin for you! This minifies your app
  * in order to load faster and run less javascript.
@@ -42,55 +36,99 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+const ESLintPlugin = require('eslint-webpack-plugin');
+
+const isDev = process.env.NODE_ENV === 'development';
+const isProd = !isDev;
+
+const buildFileName = (ext) => isDev ? `[name]${ext}` : `[name].[contenthash]${ext}`;
 
 module.exports = {
   mode: 'development',
   devtool: 'inline-source-map',
   output: {
-      filename: 'bundle.js',
-      path: path.resolve(__dirname, 'dist'),
+    filename: buildFileName('.js'),
+    path: path.resolve(__dirname, 'dist'),
+    publicPath: '',
   },
 
   devServer: {
     contentBase: path.join(__dirname, 'dist'),
     compress: true,
     open: true,
-    port: 9000
+    port: 9000,
   },
-
 
   plugins: [
     new webpack.ProgressPlugin(),
-    new MiniCssExtractPlugin({ filename: 'styles/main[hash].css' }),
-    new HtmlWebpackPlugin(),
+    new MiniCssExtractPlugin({
+      filename: `styles/${buildFileName('.css')}`,
+    }),
     new CleanWebpackPlugin(),
+    new HtmlWebpackPlugin({
+      title: 'Webpack Project',
+      template: './src/index.html',
+      minify: isProd,
+    }),
+    new ESLintPlugin({
+      fix: true,
+      lintDirtyModulesOnly: true,
+    }),
   ],
 
   module: {
-    rules: [{
-      test: /\.(js|jsx)$/,
-      include: [path.resolve(__dirname, 'src')],
-      loader: 'babel-loader'
-    }, {
-      test: /.(scss|css)$/,
-
-      use: [{
-        loader: MiniCssExtractPlugin.loader,
+    rules: [
+      {
+        test: /\.(html)$/,
+        use: ['html-loader']
       },
-        {
-        loader: "css-loader",
+      {
+        test: /\.(js|jsx)$/,
+        include: [path.resolve(__dirname, 'src')],
+        loader: 'babel-loader',
+      },
+      {
+        test: /.(scss|css)$/,
 
-        options: {
-          sourceMap: true
-        }
-      }, {
-        loader: "sass-loader",
+        use: [
+          {
+            loader: MiniCssExtractPlugin.loader,
 
-        options: {
-          sourceMap: true
+            options: {
+              publicPath: '../',
+            },
+          },
+          {
+            loader: 'css-loader',
+
+            options: {
+              sourceMap: isDev,
+            },
+          },
+          {
+            loader: 'sass-loader',
+
+            options: {
+              sourceMap: isDev,
+            },
+          },
+        ],
+      },
+      {
+        test: /\.(png|svg|jpg|jpeg|gif)$/i,
+        type: 'asset/resource',
+        generator: {
+          filename: `static/images/${buildFileName('[ext]')}`
         }
-      }]
-    }]
+      },
+      {
+        test: /\.(woff|woff2|eot|ttf|otf)$/i,
+        type: 'asset/resource',
+        generator: {
+          filename: `static/fonts/${buildFileName('[ext]')}`
+        }
+      },
+    ],
   },
 
   optimization: {
@@ -100,14 +138,14 @@ module.exports = {
       cacheGroups: {
         vendors: {
           priority: -10,
-          test: /[\\/]node_modules[\\/]/
-        }
+          test: /[\\/]node_modules[\\/]/,
+        },
       },
 
       chunks: 'async',
       minChunks: 1,
       minSize: 30000,
-      name: false
-    }
-  }
-}
+      name: false,
+    },
+  },
+};
